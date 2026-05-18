@@ -5,7 +5,7 @@
 schools:
   - id: "GLOBAL_TOOLS"    # id 唯一值
     name: "通用工具与服务" # 名称
-    initial: "T"          # 排序首字母
+    initial: "G"          # 排序首字母
     resource_folder: "GLOBAL_TOOLS"   # 资源文件夹名称
 
   - id: "zhengfang_jiaowu"
@@ -25,7 +25,7 @@ schools:
 
   - id: "urp_jiaowu"
     name: "URP教务-通用教务"
-    initial: "URP"
+    initial: "U"
     resource_folder: "urp_jiaowu"
 
   - id: "BUPT"
