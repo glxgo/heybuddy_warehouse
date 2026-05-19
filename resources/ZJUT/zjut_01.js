@@ -1,8 +1,3 @@
-// 文件: ZJUT_01.js
-// 功能：从浙江工业大学正方教务系统获取课程表，解析后导入到拾光课程表
-// 适配：浙江工业大学正方教务系统
-// 维护者：glxgo
-
 const BASE = `${window.location.origin}/jwglxt`;
 const GNMKDM = 'N253508';
 const INDEX_PATH = `/kbcx/xskbcx_cxXskbcxIndex.html?gnmkdm=${GNMKDM}&layout=default`;
@@ -160,7 +155,7 @@ function parseCourses(data) {
 function parseTimeSlots(data) {
   if (!Array.isArray(data) || !data.length) throw new Error('未获取到节次时间数据');
   return data.map((item) => ({
-    number: Number(item.jcmc),
+    number: Number(item.jcdm || item.jcmc),
     startTime: String(item.qssj || '').trim(),
     endTime: String(item.jssj || '').trim()
   })).filter(item => item.number > 0 && item.startTime && item.endTime);
@@ -190,10 +185,11 @@ async function run() {
 
     const allWeeks = courses.flatMap(course => course.weeks);
     const semesterTotalWeeks = allWeeks.length ? Math.max(...allWeeks) : 20;
+    const semesterStartDate = xqm === '3' ? `${xnm}-09-01` : `${Number(xnm) + 1}-02-24`;
 
     await window.AndroidBridgePromise.saveCourseConfig(JSON.stringify({
       semesterTotalWeeks,
-      semesterStartDate: null,
+      semesterStartDate,
       firstDayOfWeek: 1
     }));
     if (timeSlots && timeSlots.length) {

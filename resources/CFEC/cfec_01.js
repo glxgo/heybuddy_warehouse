@@ -172,25 +172,6 @@ async function fetchCourses(xnm, xqm) {
   return JSON.parse(text);
 }
 
-function validateSemesterStartDateInput(input) {
-  const value = String(input || '').trim();
-  if (!value) return false;
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? false : '请输入 YYYY-MM-DD，例如 2026-02-24';
-}
-
-async function selectSemesterStartDate(xnm, xqm) {
-  const defaultDate = xqm === '3' ? `${xnm}-09-01` : `${Number(xnm) + 1}-03-01`;
-  const picked = await window.AndroidBridgePromise.showPrompt(
-    '选择开学日期',
-    '请输入开学日期（YYYY-MM-DD）',
-    defaultDate,
-    'validateSemesterStartDateInput'
-  );
-  if (picked === null) return null;
-  const value = String(picked).trim();
-  return value || null;
-}
-
 async function run() {
   try {
     const { xnm, xqm } = await resolveTerm();
@@ -200,7 +181,7 @@ async function run() {
     const { courses } = parseCourses(rawData);
     if (!courses.length) throw new Error('未获取到课表数据');
 
-    const semesterStartDate = await selectSemesterStartDate(xnm, xqm);
+    const semesterStartDate = xqm === '3' ? `${xnm}-09-01` : `${Number(xnm) + 1}-02-24`;
     const allWeeks = courses.flatMap(course => course.weeks);
     const semesterTotalWeeks = allWeeks.length ? Math.max(...allWeeks) : 20;
 
