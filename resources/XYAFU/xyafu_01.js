@@ -388,11 +388,30 @@ async function loadTimetableDoc(term) {
   return await fetchTimetableDoc(term.xn, term.xq, term.xh);
 }
 
+function validateSemesterStartDateInput(input) {
+  const value = String(input || '').trim();
+  if (!value) return false;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? false : '请输入 YYYY-MM-DD，例如 2026-02-24';
+}
+
+async function selectSemesterStartDate(xn, xq) {
+  const defaultDate = xq === '1' ? `${xn}-09-01` : `${Number(xn) + 1}-03-01`;
+  const picked = await window.AndroidBridgePromise.showPrompt(
+    '选择开学日期',
+    '请输入开学日期（YYYY-MM-DD）',
+    defaultDate,
+    'validateSemesterStartDateInput'
+  );
+  if (picked === null) return null;
+  const value = String(picked).trim();
+  return value || null;
+}
+
 async function runImportFlow() {
   try {
     const confirmed = await window.AndroidBridgePromise.showAlert(
       '信阳农林学院教务导入',
-      '请确认你已登录教务系统，并且最好已经打开“学生个人课表”页面。',
+      '请确认你已登录教务系统，并且最好已经打开”学生个人课表”页面。',
       '确定，开始导入'
     );
     if (!confirmed) return;
@@ -408,9 +427,9 @@ async function runImportFlow() {
       throw new Error('未找到有效课程，请确认当前学期课表已正常显示');
     }
 
+    const semesterStartDate = await selectSemesterStartDate(term.xn, term.xq);
     const allWeeks = courses.flatMap(course => course.weeks);
     const semesterTotalWeeks = allWeeks.length ? Math.max(...allWeeks) : 20;
-    const semesterStartDate = term.xq === '1' ? `${term.xn}-09-01` : `${Number(term.xn) + 1}-02-24`;
 
     await window.AndroidBridgePromise.saveCourseConfig(JSON.stringify({
       semesterTotalWeeks,

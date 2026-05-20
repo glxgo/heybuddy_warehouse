@@ -10,12 +10,12 @@ const TIME_SLOTS = [
   { number: 2, startTime: '08:55', endTime: '09:40' },
   { number: 3, startTime: '10:05', endTime: '10:50' },
   { number: 4, startTime: '10:55', endTime: '11:40' },
-  { number: 5, startTime: '14:00', endTime: '14:45' },
-  { number: 6, startTime: '14:55', endTime: '15:40' },
-  { number: 7, startTime: '16:10', endTime: '16:55' },
-  { number: 8, startTime: '17:05', endTime: '17:50' },
-  { number: 9, startTime: '18:30', endTime: '19:15' },
-  { number: 10, startTime: '19:25', endTime: '20:10' },
+  { number: 5, startTime: '14:30', endTime: '15:15' },
+  { number: 6, startTime: '15:25', endTime: '16:10' },
+  { number: 7, startTime: '16:40', endTime: '17:25' },
+  { number: 8, startTime: '17:35', endTime: '18:20' },
+  { number: 9, startTime: '19:00', endTime: '19:45' },
+  { number: 10, startTime: '19:55', endTime: '20:40' },
 ];
 
 function cleanText(value) {
@@ -196,13 +196,29 @@ function getCurrentTermInfo(doc) {
   };
 }
 
-function computeStartDate(termText) {
+function validateSemesterStartDateInput(input) {
+  const value = String(input || '').trim();
+  if (!value) return false;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? false : '请输入 YYYY-MM-DD，例如 2026-02-24';
+}
+
+async function selectSemesterStartDate(termText) {
+  let defaultDate = '';
   const match = String(termText || '').match(/(\d{4})[^0-9]*(\d{4})?[^0-9]*[第]?(\d+)/);
-  if (!match) return null;
-  const startYear = parseInt(match[1], 10);
-  const semester = parseInt(match[3], 10);
-  if (semester === 1) return `${startYear}-09-01`;
-  return `${startYear + 1}-02-24`;
+  if (match) {
+    const startYear = parseInt(match[1], 10);
+    const semester = parseInt(match[3], 10);
+    defaultDate = semester === 1 ? `${startYear}-09-01` : `${startYear + 1}-03-01`;
+  }
+  const picked = await window.AndroidBridgePromise.showPrompt(
+    '选择开学日期',
+    '请输入开学日期（YYYY-MM-DD）',
+    defaultDate,
+    'validateSemesterStartDateInput'
+  );
+  if (picked === null) return null;
+  const value = String(picked).trim();
+  return value || null;
 }
 
 function isScheduleDoc(doc) {
@@ -263,7 +279,7 @@ async function runImportFlow() {
 
     const allWeeks = courses.flatMap(course => course.weeks);
     const semesterTotalWeeks = allWeeks.length ? Math.max(...allWeeks) : 20;
-    const semesterStartDate = computeStartDate(termInfo?.text) || null;
+    const semesterStartDate = await selectSemesterStartDate(termInfo?.text);
 
     await window.AndroidBridgePromise.saveCourseConfig(JSON.stringify({
       semesterTotalWeeks,
