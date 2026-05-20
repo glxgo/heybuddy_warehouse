@@ -1,8 +1,3 @@
-// 文件: WENHUA_01.js
-// 功能：从文华学院正方教务系统获取课程表，解析后导入到拾光课程表
-// 适配：文华学院正方教务系统
-// 维护者：glxgo
-
 const BASE = `${window.location.origin}/jwglxt`;
 const INDEX_PATH = '/kbcx/xskbcx_cxXskbcxIndex.html?gnmkdm=N2151&layout=default';
 const COURSE_API_PATH = '/kbcx/xskbcx_cxXsgrkb.html?gnmkdm=N2151';
@@ -159,7 +154,7 @@ function parseCourses(data) {
 function parseTimeSlots(data) {
   if (!Array.isArray(data) || !data.length) throw new Error('未获取到节次时间数据');
   return data.map((item) => ({
-    number: Number(item.jcmc),
+    number: Number(item.jcdm || item.jcmc),
     startTime: String(item.qssj || '').trim(),
     endTime: String(item.jssj || '').trim()
   })).filter(item => item.number > 0 && item.startTime && item.endTime);
@@ -177,6 +172,25 @@ async function fetchTimeSlots(xnm, xqm) {
   return parseTimeSlots(JSON.parse(text));
 }
 
+function validateSemesterStartDateInput(input) {
+  const value = String(input || '').trim();
+  if (!value) return false;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? false : '请输入 YYYY-MM-DD，例如 2026-02-24';
+}
+
+async function selectSemesterStartDate(xnm, xqm) {
+  const defaultDate = xqm === '3' ? `${xnm}-09-01` : `${Number(xnm) + 1}-03-01`;
+  const picked = await window.AndroidBridgePromise.showPrompt(
+    '选择开学日期',
+    '请输入开学日期（YYYY-MM-DD）',
+    defaultDate,
+    'validateSemesterStartDateInput'
+  );
+  if (picked === null) return null;
+  const value = String(picked).trim();
+  return value || null;
+}
+
 async function run() {
   try {
     const { xnm, xqm } = await resolveTerm();
@@ -187,12 +201,13 @@ async function run() {
     if (!courses.length) throw new Error('未获取到课表数据');
     const timeSlots = await fetchTimeSlots(xnm, xqm).catch(() => null);
 
+    const semesterStartDate = await selectSemesterStartDate(xnm, xqm);
     const allWeeks = courses.flatMap(course => course.weeks);
     const semesterTotalWeeks = allWeeks.length ? Math.max(...allWeeks) : 20;
 
     await window.AndroidBridgePromise.saveCourseConfig(JSON.stringify({
       semesterTotalWeeks,
-      semesterStartDate: null,
+      semesterStartDate,
       firstDayOfWeek: 1
     }));
     if (timeSlots && timeSlots.length) {

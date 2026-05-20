@@ -1,13 +1,21 @@
-// 文件: ECJTU_01.js
-// 功能：从华东交通大学系统获取课程表，解析后导入到拾光课程表
-// 适配：华东交通大学教务系统
-// 维护者：glxgo
-
 const BASE = window.location.origin;
 const SCHEDULE_PATHS = [
   '/Schedule/Schedule_getUserSchedume.action?item=0207',
   '/Schedule/Schedule_getUserSchedume.action?item=0205',
   '/Schedule/Schedule_getUserSchedume.action'
+];
+
+const TIME_SLOTS = [
+  { number: 1, startTime: '08:00', endTime: '08:45' },
+  { number: 2, startTime: '08:55', endTime: '09:40' },
+  { number: 3, startTime: '10:05', endTime: '10:50' },
+  { number: 4, startTime: '10:55', endTime: '11:40' },
+  { number: 5, startTime: '14:30', endTime: '15:15' },
+  { number: 6, startTime: '15:25', endTime: '16:10' },
+  { number: 7, startTime: '16:40', endTime: '17:25' },
+  { number: 8, startTime: '17:35', endTime: '18:20' },
+  { number: 9, startTime: '19:00', endTime: '19:45' },
+  { number: 10, startTime: '19:55', endTime: '20:40' },
 ];
 
 function cleanText(value) {
@@ -188,6 +196,31 @@ function getCurrentTermInfo(doc) {
   };
 }
 
+function validateSemesterStartDateInput(input) {
+  const value = String(input || '').trim();
+  if (!value) return false;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? false : '请输入 YYYY-MM-DD，例如 2026-02-24';
+}
+
+async function selectSemesterStartDate(termText) {
+  let defaultDate = '';
+  const match = String(termText || '').match(/(\d{4})[^0-9]*(\d{4})?[^0-9]*[第]?(\d+)/);
+  if (match) {
+    const startYear = parseInt(match[1], 10);
+    const semester = parseInt(match[3], 10);
+    defaultDate = semester === 1 ? `${startYear}-09-01` : `${startYear + 1}-03-01`;
+  }
+  const picked = await window.AndroidBridgePromise.showPrompt(
+    '选择开学日期',
+    '请输入开学日期（YYYY-MM-DD）',
+    defaultDate,
+    'validateSemesterStartDateInput'
+  );
+  if (picked === null) return null;
+  const value = String(picked).trim();
+  return value || null;
+}
+
 function isScheduleDoc(doc) {
   return !!(doc && (doc.getElementById('courseSche') || doc.querySelector('#term')));
 }
@@ -246,12 +279,14 @@ async function runImportFlow() {
 
     const allWeeks = courses.flatMap(course => course.weeks);
     const semesterTotalWeeks = allWeeks.length ? Math.max(...allWeeks) : 20;
+    const semesterStartDate = await selectSemesterStartDate(termInfo?.text);
 
     await window.AndroidBridgePromise.saveCourseConfig(JSON.stringify({
       semesterTotalWeeks,
-      semesterStartDate: null,
+      semesterStartDate,
       firstDayOfWeek: 1
     }));
+    await window.AndroidBridgePromise.savePresetTimeSlots(JSON.stringify(TIME_SLOTS));
     await window.AndroidBridgePromise.saveImportedCourses(JSON.stringify(courses));
 
     AndroidBridge.showToast(`导入成功：共 ${courses.length} 门课程`);
